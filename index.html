@@ -112,6 +112,14 @@
   .cancion .nom{font-weight:600;font-size:18px;line-height:1.15;display:block;}
   .cancion .estrellas{font-size:14px;margin-top:6px;color:#5a4205;font-family:'Nunito';font-weight:800;}
 
+  /* separadores de nivel en la lista de canciones */
+  .nivel-titulo{grid-column:1/-1;text-align:left;margin:6px 2px -2px;padding:8px 4px 0;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:clamp(16px,3.8vw,20px);color:#fff;
+    border-top:1px solid var(--panel-borde);}
+  .nivel-titulo:first-child{border-top:none;}
+  .nivel-titulo .estrellitas{color:var(--oro);letter-spacing:2px;margin-right:6px;}
+  .nivel-titulo small{display:block;font-family:'Nunito';font-weight:700;font-size:.62em;opacity:.72;margin-top:2px;}
+
   /* tira de partitura de colores */
   .partitura{display:flex;gap:8px;overflow-x:auto;padding:14px 6px;margin:6px 0 4px;scroll-behavior:smooth;
     -webkit-overflow-scrolling:touch;justify-content:flex-start;}
@@ -141,6 +149,7 @@
     box-shadow:0 3px 8px rgba(0,0,0,.3),inset 0 -6px 12px rgba(0,0,0,.12);}
   .tecla:focus-visible{outline:3px solid #fff;outline-offset:-3px;}
   .tecla.brilla{animation:latido 1s ease-in-out infinite;box-shadow:0 0 0 4px rgba(255,255,255,.55),0 0 26px 6px rgba(255,255,255,.4);z-index:5;}
+  .negra.brilla{animation:latido 1s ease-in-out infinite;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 0 22px 6px rgba(255,210,63,.7);z-index:9;}
   @keyframes latido{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
   .tecla.error{animation:tiembla .35s;}
   @keyframes tiembla{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
@@ -212,7 +221,7 @@
 <div class="wrap">
   <header>
     <h1 class="titulo">Piano de Colores</h1>
-    <p class="subtitulo">Aprende las notas y toca tus canciones favoritas 🌈</p>
+    <p class="subtitulo">Aprende las notas y toca desde canciones fáciles hasta música clásica 🎼</p>
     <p class="saludo" id="saludo"></p>
   </header>
 
@@ -247,6 +256,7 @@
         <button class="btn btn-claro" id="btnEscucharNota">🔊 Escuchar la nota</button>
         <button class="btn btn-claro" id="btnReiniciarNotas">↺ Empezar de nuevo</button>
       </div>
+      <button class="btn btn-oro" id="btnTeclasNegras" style="display:none;margin-top:12px;">🎹 Ahora las teclas negras (♯)</button>
     </div>
 
     <!-- VISTA: CANCIONES -->
@@ -291,12 +301,15 @@ const OCTAVAS=[2,3,4,5,6];
 const LETRA=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const BLANCAS_PC=[{pc:0,nom:'Do'},{pc:2,nom:'Re'},{pc:4,nom:'Mi'},{pc:5,nom:'Fa'},{pc:7,nom:'Sol'},{pc:9,nom:'La'},{pc:11,nom:'Si'}];
 const NEGRAS_PC=[{pc:1,tras:0},{pc:3,tras:2},{pc:6,tras:5},{pc:8,tras:7},{pc:10,tras:9}];
-const COLOR={'Do':'#FF5D73','Re':'#FF9A3C','Mi':'#FFD23F','Fa':'#5BD891','Sol':'#33C4D8','La':'#5B8DEF','Si':'#B07BE8'};
+const COLOR={'Do':'#FF5D73','Re':'#FF9A3C','Mi':'#FFD23F','Fa':'#5BD891','Sol':'#33C4D8','La':'#5B8DEF','Si':'#B07BE8',
+  'Do♯':'#D14A60','Re♯':'#E07A2E','Fa♯':'#3DB87A','Sol♯':'#2BA7BC','La♯':'#8A63D6'};
+// nombre de cada tecla negra según su nota (para enseñarlas y mostrarlas en la partitura)
+const NOM_NEGRA={1:'Do♯',3:'Re♯',6:'Fa♯',8:'Sol♯',10:'La♯'};
 const WHITE=[], BLACK=[], FREQ={}, NOM={};
 const frecuencia=(oct,pc)=>+(440*Math.pow(2,(12*(oct+1)+pc-69)/12)).toFixed(2);
 OCTAVAS.forEach(oct=>{
   BLANCAS_PC.forEach(b=>{ const id=LETRA[b.pc]+oct; WHITE.push({id,nom:b.nom}); FREQ[id]=frecuencia(oct,b.pc); NOM[id]=b.nom; });
-  NEGRAS_PC.forEach(n=>{ const id=LETRA[n.pc]+oct, tras=LETRA[n.tras]+oct; BLACK.push({id,tras}); FREQ[id]=frecuencia(oct,n.pc); });
+  NEGRAS_PC.forEach(n=>{ const id=LETRA[n.pc]+oct, tras=LETRA[n.tras]+oct; BLACK.push({id,tras}); FREQ[id]=frecuencia(oct,n.pc); NOM[id]=NOM_NEGRA[n.pc]; });
 });
 // Do final (Do7) para completar las 61 teclas
 WHITE.push({id:'C7',nom:'Do'}); FREQ['C7']=frecuencia(7,0); NOM['C7']='Do';
@@ -308,11 +321,15 @@ const TECLADO = {
   'h':'A4','u':'A#4','j':'B4','k':'C5','o':'C#5','l':'D5','p':'D#5','ñ':'E5',';':'E5',"'":'F5','[':'F#5','\\':'G5'
 };
 
-// notas a enseñar en el modo "Las notas" (octava central)
-const NOTAS_LECCION = ['C4','D4','E4','F4','G4','A4','B4'];
+// notas a enseñar en el modo "Las notas": primero las 7 blancas, luego las 5 negras
+const LECCION_BLANCAS = ['C4','D4','E4','F4','G4','A4','B4'];
+const LECCION_NEGRAS  = ['C#4','D#4','F#4','G#4','A#4'];
+let NOTAS_LECCION = LECCION_BLANCAS.slice();
+let leccionTanda = 'blancas';
 
-// canciones: secuencia de [nota, tiempos]
+// canciones: secuencia de [nota, tiempos] · nivel 1 (fácil) → 5 (clásica)
 const CANCIONES = [
+  /* ---------- NIVEL 1 · primeros pasos (solo teclas blancas) ---------- */
   { id:'pan', nom:'Pan caliente', emoji:'🥐', nivel:1, color:'#FFB454',
     notas:[['E4',1],['D4',1],['C4',2],['E4',1],['D4',1],['C4',2],
            ['C4',1],['C4',1],['C4',1],['C4',1],['D4',1],['D4',1],['D4',1],['D4',1],
@@ -332,6 +349,8 @@ const CANCIONES = [
            ['D4',1],['D4',1],['D4',2],['E4',1],['G4',1],['G4',2],
            ['E4',1],['D4',1],['C4',1],['D4',1],['E4',1],['E4',1],['E4',1],['E4',1],
            ['D4',1],['D4',1],['E4',1],['D4',1],['C4',2]] },
+
+  /* ---------- NIVEL 2 · vamos avanzando ---------- */
   { id:'alegria', nom:'Himno a la alegría', emoji:'😊', nivel:2, color:'#5B8DEF',
     notas:[['E4',1],['E4',1],['F4',1],['G4',1],['G4',1],['F4',1],['E4',1],['D4',1],
            ['C4',1],['C4',1],['D4',1],['E4',1],['E4',1],['D4',1],['D4',2],
@@ -348,11 +367,114 @@ const CANCIONES = [
            ['E4',1],['G4',1],['C4',1],['D4',1],['E4',2],
            ['F4',1],['F4',1],['F4',1],['F4',1],['F4',1],['E4',1],['E4',1],['E4',1],
            ['E4',1],['D4',1],['D4',1],['E4',1],['D4',2],['G4',2]] },
+  { id:'nupcial', nom:'Aquí viene la novia', emoji:'💐', nivel:2, color:'#F7A8C4',
+    notas:[['C4',1],['F4',1],['F4',2],
+           ['C4',1],['G4',1],['F4',1],['E4',1],['F4',2],
+           ['C4',1],['F4',1],['A4',1],['A4',1],['G4',1],['F4',1],['E4',1],['F4',1],['G4',1],['F4',2]] },
+  { id:'cucaracha', nom:'La cucaracha', emoji:'🐞', nivel:2, color:'#FF9A3C',
+    notas:[['C4',1],['C4',1],['C4',1],['F4',1],['A4',2],
+           ['C4',1],['C4',1],['C4',1],['F4',1],['A4',2],
+           ['F4',1],['F4',1],['E4',1],['E4',1],['D4',1],['D4',1],['C4',2],
+           ['C4',1],['C4',1],['C4',1],['E4',1],['G4',2],
+           ['C4',1],['C4',1],['C4',1],['E4',1],['G4',2],
+           ['E4',1],['F4',1],['E4',1],['D4',1],['C4',2]] },
+  { id:'wish', nom:'Navidad, te deseamos', emoji:'🎁', nivel:2, color:'#5BD891',
+    notas:[['G4',1],['C5',1],['C5',1],['D5',1],['C5',1],['B4',1],['A4',2],
+           ['A4',1],['D5',1],['D5',1],['E5',1],['D5',1],['C5',1],['B4',2],
+           ['G4',1],['E5',1],['E5',1],['F5',1],['E5',1],['D5',1],['C5',2],
+           ['A4',1],['A4',1],['D5',1],['B4',1],['C5',1],['A4',1],['G4',2]] },
+  { id:'joy', nom:'Al mundo paz (villancico)', emoji:'🔔', nivel:2, color:'#FFD23F',
+    notas:[['C5',2],['B4',1],['A4',1],['G4',3],['F4',1],['E4',2],['D4',1],['C4',3],
+           ['G4',1],['A4',1],['B4',1],['C5',1],['C5',1],['B4',1],['A4',1],
+           ['A4',1],['G4',1],['F4',2],['E4',2],['D4',1],['C4',3]] },
+
+  /* ---------- NIVEL 3 · ya tocas bien ---------- */
   { id:'cumple', nom:'Cumpleaños feliz', emoji:'🎂', nivel:3, color:'#B07BE8',
     notas:[['G4',1],['G4',1],['A4',1],['G4',1],['C5',1],['B4',2],
            ['G4',1],['G4',1],['A4',1],['G4',1],['D5',1],['C5',2],
            ['G4',1],['G4',1],['G5',1],['E5',1],['C5',1],['B4',1],['A4',2],
-           ['F5',1],['F5',1],['E5',1],['C5',1],['D5',1],['C5',2]] }
+           ['F5',1],['F5',1],['E5',1],['C5',1],['D5',1],['C5',2]] },
+  { id:'noche', nom:'Noche de paz', emoji:'🌟', nivel:3, color:'#5B8DEF',
+    notas:[['G4',3],['A4',1],['G4',2],['E4',3],
+           ['G4',3],['A4',1],['G4',2],['E4',3],
+           ['D5',3],['D5',1],['B4',3],
+           ['C5',3],['C5',1],['G4',3],
+           ['A4',3],['A4',1],['C5',2],['B4',1],['A4',2],
+           ['G4',3],['A4',1],['G4',2],['E4',3],
+           ['D5',3],['D5',1],['F5',2],['D5',1],['B4',2],
+           ['C5',3],['E5',3],
+           ['C5',2],['G4',1],['E4',2],['G4',1],['F4',2],['D4',1],['C4',4]] },
+  { id:'venid', nom:'Venid, fieles (Adeste Fideles)', emoji:'⛪', nivel:3, color:'#33C4D8',
+    notas:[['G4',2],['G4',1],['D4',2],['G4',1],['A4',2],['D4',2],
+           ['B4',1],['A4',1],['B4',1],['C5',1],['B4',2],['A4',1],['G4',1],
+           ['B4',1],['A4',1],['B4',1],['C5',1],['B4',2],['A4',1],['G4',1],
+           ['D5',2],['C5',2],['B4',2],['A4',2],
+           ['G4',1],['D5',1],['C5',1],['B4',1],['A4',1],['G4',1],['A4',1],['D4',1],['G4',2]] },
+  { id:'manana', nom:'Mañana (Grieg · Peer Gynt)', emoji:'🌅', nivel:3, color:'#FFB454',
+    notas:[['G4',1],['E4',1],['D4',1],['C4',1],['D4',1],['E4',1],
+           ['G4',1],['E4',1],['D4',1],['C4',1],['D4',1],['E4',1],
+           ['G4',1],['A4',1],['G4',1],['E4',1],
+           ['G4',1],['A4',1],['G4',1],['E4',1],
+           ['D4',1],['E4',1],['G4',1],['A4',1],['G4',2]] },
+
+  /* ---------- NIVEL 4 · teclas negras y clásica ---------- */
+  { id:'elisa', nom:'Para Elisa (Beethoven)', emoji:'🎼', nivel:4, color:'#B07BE8',
+    notas:[['E5',1],['D#5',1],['E5',1],['D#5',1],['E5',1],['B4',1],['D5',1],['C5',1],['A4',2],
+           ['C4',1],['E4',1],['A4',1],['B4',2],
+           ['E4',1],['G#4',1],['B4',1],['C5',2],
+           ['E4',1],['E5',1],['D#5',1],['E5',1],['D#5',1],['E5',1],['B4',1],['D5',1],['C5',1],['A4',2],
+           ['C4',1],['E4',1],['A4',1],['B4',2],
+           ['E4',1],['C5',1],['B4',1],['A4',2]] },
+  { id:'minueto', nom:'Minueto en Sol (Bach)', emoji:'👑', nivel:4, color:'#FFD23F',
+    notas:[['D5',2],
+           ['G4',1],['A4',1],['B4',1],['C5',1],
+           ['D5',1],['G4',1],['G4',2],
+           ['E5',2],
+           ['C5',1],['D5',1],['E5',1],['F#5',1],
+           ['G4',1],['G4',1],['G4',2],
+           ['C5',2],
+           ['D5',1],['C5',1],['B4',1],['A4',1],
+           ['B4',1],['C5',1],['B4',1],['A4',1],
+           ['G4',2]] },
+  { id:'serenata', nom:'Pequeña serenata (Mozart)', emoji:'🎻', nivel:4, color:'#FF5D73',
+    notas:[['G4',1],['D5',1],['G4',1],['D5',1],['G4',1],['D5',1],['G4',2],
+           ['B4',1],['D5',1],['B4',1],['D5',1],['B4',1],['D5',1],['B4',2],
+           ['C5',1],['A4',1],['F#4',1],['A4',1],['D5',1],['C5',1],['B4',1],['A4',1],['G4',2]] },
+  { id:'danubio', nom:'El Danubio Azul (vals)', emoji:'💧', nivel:4, color:'#33C4D8',
+    notas:[['D4',1],['G4',2],['B4',2],['B4',1],['B4',1],
+           ['D4',1],['G4',2],['B4',2],['B4',1],['B4',1],
+           ['A4',1],['C5',2],['C5',1],['C5',1],
+           ['A4',1],['C5',2],['C5',1],['C5',1],
+           ['G4',1],['B4',2],['B4',1],['B4',1],
+           ['F#4',1],['A4',2],['A4',1],['A4',1],['G4',4]] },
+
+  /* ---------- NIVEL 5 · pequeño pianista (clásica) ---------- */
+  { id:'greensleeves', nom:'Greensleeves', emoji:'🌿', nivel:5, color:'#5BD891',
+    notas:[['A4',1],
+           ['C5',2],['D5',1],['E5',1],['F5',1],['E5',1],
+           ['D5',2],['B4',1],['G4',1],['A4',1],['B4',1],
+           ['C5',2],['A4',1],['A4',1],['G#4',1],['A4',1],['B4',1],
+           ['G#4',2],['E4',1],['A4',1],
+           ['C5',2],['D5',1],['E5',1],['F5',1],['E5',1],
+           ['D5',2],['B4',1],['G4',1],['A4',1],['B4',1],
+           ['C5',1],['B4',1],['A4',1],['G#4',1],['A4',1],['B4',1],['G#4',3]] },
+  { id:'canon', nom:'Canon en Re (Pachelbel)', emoji:'🕊️', nivel:5, color:'#5B8DEF',
+    notas:[['F#5',2],['E5',2],['D5',2],['C#5',2],
+           ['B4',2],['A4',2],['B4',2],['C#5',2],
+           ['D5',2],['C#5',2],['B4',2],['A4',2],
+           ['G4',2],['F#4',2],['G4',2],['E4',2],
+           ['F#5',2],['E5',2],['D5',2],['C#5',2],
+           ['B4',2],['A4',2],['B4',2],['C#5',2],
+           ['D5',2],['A4',2],['B4',2],['C#5',2],['D5',4]] }
+];
+
+// niveles para agrupar la lista de canciones (progresión de dificultad)
+const NIVELES = [
+  {n:1, nom:'Primeros pasos',         desc:'Teclas blancas, muy fáciles'},
+  {n:2, nom:'Vamos avanzando',        desc:'Un poquito más largas'},
+  {n:3, nom:'Ya tocas bien',          desc:'Canciones más completas y villancicos'},
+  {n:4, nom:'Teclas negras y clásica',desc:'Aquí aparecen los sostenidos ♯'},
+  {n:5, nom:'Pequeño pianista',       desc:'Música clásica de verdad'}
 ];
 
 /* ====================== AUDIO ====================== */
@@ -394,7 +516,7 @@ WHITE.forEach((w,i)=>{
 BLACK.forEach(b=>{
   const k=document.createElement('button');
   k.className='negra'; k.dataset.nota=b.id; k.dataset.tras=b.tras;
-  k.setAttribute('aria-label','Tecla negra');
+  k.setAttribute('aria-label','Nota '+(NOM[b.id]||'negra'));
   piano.appendChild(k); teclasPorId[b.id]=k;
 });
 function ubicarNegras(){
@@ -504,7 +626,7 @@ function cambiarModo(m,tab){
   document.getElementById('vista-'+m).classList.add('activa');
   limpiarBrillos();
   document.getElementById('chkNombres').checked=true; aplicarNombres(true);
-  if(m==='notas'){ leccionPos=0; iniciarLeccion(); }
+  if(m==='notas'){ resetLeccion(); }
   if(m==='canciones'){ volverALista(); }
 }
 
@@ -524,17 +646,26 @@ function aplicarNombres(ver){ Object.values(teclasPorId).forEach(k=>{ if(k.class
 
 /* ====================== MODO: LAS NOTAS ====================== */
 const puntosCont=document.getElementById('puntosNotas');
+const btnTeclasNegras=document.getElementById('btnTeclasNegras');
 function iniciarLeccion(){
   puntosCont.innerHTML='';
   NOTAS_LECCION.forEach(()=>{ const b=document.createElement('b'); puntosCont.appendChild(b); });
-  document.getElementById('notasTitulo').textContent='Conoce las 7 notas';
+  document.getElementById('notasTitulo').textContent =
+    leccionTanda==='negras' ? 'Las 5 teclas negras (♯)' : 'Conoce las 7 notas';
+  btnTeclasNegras.style.display='none';
   mostrarNotaLeccion();
 }
+function resetLeccion(){
+  leccionTanda='blancas'; NOTAS_LECCION=LECCION_BLANCAS.slice(); leccionPos=0;
+  iniciarLeccion();
+}
 function mostrarNotaLeccion(){
-  const id=NOTAS_LECCION[leccionPos], nom=NOM[id];
+  const id=NOTAS_LECCION[leccionPos], nom=NOM[id], col=colorDe(id);
   const ng=document.getElementById('notaGrande');
-  ng.textContent=nom; ng.style.background=COLOR[nom];
-  document.getElementById('notasGuia').innerHTML='Esta es la nota <b>'+nom+'</b>. Toca la tecla del color <b style="color:'+COLOR[nom]+'">'+nom+'</b> que brilla. 👇';
+  ng.textContent=nom; ng.style.background=col;
+  const extra = leccionTanda==='negras'
+    ? ' Es la tecla <b>negra</b> que está justo al lado.' : '';
+  document.getElementById('notasGuia').innerHTML='Esta es la nota <b>'+nom+'</b>. Toca la tecla del color <b style="color:'+col+'">'+nom+'</b> que brilla.'+extra+' 👇';
   puntosCont.querySelectorAll('b').forEach((b,i)=>{ b.classList.toggle('hecho',i<leccionPos); b.classList.toggle('actual',i===leccionPos); });
   brillar(id);
 }
@@ -546,10 +677,17 @@ function revisarLeccion(id, el){
     leccionPos++;
     if(leccionPos>=NOTAS_LECCION.length){
       limpiarBrillos();
-      document.getElementById('notaGrande').textContent='🌟';
-      document.getElementById('notaGrande').style.background='linear-gradient(135deg,#FFD23F,#FF9A3C)';
-      document.getElementById('notasGuia').innerHTML='¡Aprendiste todas las notas! Ya puedes ir a <b>Canciones</b>. 🎉';
-      festejar('¡Lo lograste! 🌟');
+      const ng=document.getElementById('notaGrande');
+      if(leccionTanda==='blancas'){
+        ng.textContent='🌟'; ng.style.background='linear-gradient(135deg,#FFD23F,#FF9A3C)';
+        document.getElementById('notasGuia').innerHTML='¡Aprendiste las 7 notas! Ahora prueba las <b>teclas negras</b> o ve a <b>Canciones</b>. 🎉';
+        btnTeclasNegras.style.display='inline-block';
+        festejar('¡Lo lograste! 🌟');
+      } else {
+        ng.textContent='🎹'; ng.style.background='linear-gradient(135deg,#B07BE8,#5B8DEF)';
+        document.getElementById('notasGuia').innerHTML='¡Ahora conoces TODAS las teclas, blancas y negras! Ya puedes tocar música clásica. 🎼';
+        festejar('¡Todas las teclas! 🎹');
+      }
     } else {
       const animar=()=>{ const ng=document.getElementById('notaGrande'); ng.style.transform='scale(1.12)'; setTimeout(()=>ng.style.transform='',180); };
       animar();
@@ -557,21 +695,39 @@ function revisarLeccion(id, el){
     }
   } else if(NOM[id]){
     el.classList.add('error'); setTimeout(()=>el.classList.remove('error'),360);
-    document.getElementById('notasGuia').innerHTML='Esa es <b>'+NOM[id]+'</b>. Busca la nota <b style="color:'+COLOR[NOM[objetivo]]+'">'+NOM[objetivo]+'</b> que brilla. 💛';
+    document.getElementById('notasGuia').innerHTML='Esa es <b>'+NOM[id]+'</b>. Busca la nota <b style="color:'+colorDe(objetivo)+'">'+NOM[objetivo]+'</b> que brilla. 💛';
   }
 }
 document.getElementById('btnEscucharNota').addEventListener('click',()=>{ audioOn(); const id=NOTAS_LECCION[Math.min(leccionPos,NOTAS_LECCION.length-1)]; sonar(FREQ[id],1.1); const k=teclasPorId[id]; if(k){k.classList.add('pulsada');setTimeout(()=>k.classList.remove('pulsada'),200);} });
-document.getElementById('btnReiniciarNotas').addEventListener('click',()=>{ leccionPos=0; iniciarLeccion(); });
+document.getElementById('btnReiniciarNotas').addEventListener('click',resetLeccion);
+btnTeclasNegras.addEventListener('click',()=>{
+  leccionTanda='negras'; NOTAS_LECCION=LECCION_NEGRAS.slice(); leccionPos=0;
+  document.getElementById('notaGrande').style.transform='';
+  iniciarLeccion();
+});
 
 /* ====================== MODO: CANCIONES ====================== */
 const grid=document.getElementById('gridCanciones');
-CANCIONES.forEach(c=>{
+function crearTarjetaCancion(c){
   const card=document.createElement('button');
   card.className='cancion'; card.style.background=c.color;
-  card.innerHTML='<span class="emoji">'+c.emoji+'</span><span class="nom">'+c.nom+'</span><span class="estrellas">'+'★'.repeat(c.nivel)+'☆'.repeat(3-c.nivel)+'</span>';
+  const llenas='★'.repeat(c.nivel), vacias='☆'.repeat(Math.max(0,5-c.nivel));
+  card.innerHTML='<span class="emoji">'+c.emoji+'</span><span class="nom">'+c.nom+'</span><span class="estrellas">'+llenas+vacias+'</span>';
   card.addEventListener('click',()=>abrirCancion(c));
-  grid.appendChild(card);
-});
+  return card;
+}
+function construirGrid(){
+  grid.innerHTML='';
+  NIVELES.forEach(N=>{
+    const songs=CANCIONES.filter(c=>c.nivel===N.n);
+    if(!songs.length) return;
+    const h=document.createElement('div'); h.className='nivel-titulo';
+    h.innerHTML='<span class="estrellitas">'+'★'.repeat(N.n)+'</span>Nivel '+N.n+' · '+N.nom+'<small>'+N.desc+'</small>';
+    grid.appendChild(h);
+    songs.forEach(c=>grid.appendChild(crearTarjetaCancion(c)));
+  });
+}
+construirGrid();
 function volverALista(){
   cancionActual=null; reproduciendo=false; limpiarBrillos();
   document.getElementById('listaCanciones').style.display='block';
